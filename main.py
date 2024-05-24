@@ -12,17 +12,13 @@ app= FastAPI(title='Proyecto Integrador I Hecho por Michael Martinez')
 
 templates = Jinja2Templates(directory="templates")
 
-df_recom = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/4e23689d2e1a74fddcc9251cee8614c16618cbcf/Dataset/recomendacion.parquet?raw=True')
+df_recom = pd.read_parquet(r'https://github.com/bkmay1417/prueva/blob/5ccbce7c14b50ab9ab6da10a366b43df43b8d8fb/Dataset/recomendacion2.parquet?raw=True')
 df_games = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/82702a42172b2b0f23c1e24c6f9fdb294c52d78e/Dataset/developer.parquet?raw=True')
 merged_df = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/8f87ccc010ef4ab3025d5e95d5f0cc1ee11fd276/Dataset/best_developer_year.parquet?raw=True')
 reviews = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/8f87ccc010ef4ab3025d5e95d5f0cc1ee11fd276/Dataset/reviews_analysis.parquet?raw=True')
 
 
-# Vectorizar los géneros
-vectorizer = TfidfVectorizer()
-tfidf_matrix = vectorizer.fit_transform(df_recom['genres_str'])
-# Calcular la similitud del coseno
-cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)# optimizar
+
 
 
 
@@ -135,6 +131,11 @@ async def recomendacion_juego(item_id:float= Query(default= 10.0)):
     """
     10.0 = couter srike
     """
+    # Vectorizar los géneros
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(df_recom['genres_str'])
+    # Calcular la similitud del coseno
+    cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)# optimizar
     idx = df_recom[df_recom['item_id'] == item_id].index[0]
     sim_scores = list(enumerate(cosine_sim[idx]))
     sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:6]
