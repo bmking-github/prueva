@@ -1,10 +1,12 @@
 import os
 import uvicorn 
-from fastapi import FastAPI, Request, Query, Path,HTTPException
+from fastapi import FastAPI, Request, Query, Path, HTTPException
 from fastapi.responses import HTMLResponse
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+port = int(os.environ.get('PORT', 4000))
 
 app = FastAPI(title='Proyecto Integrador I Hecho por Michael Martinez')
 # Cargar el dataset
@@ -32,8 +34,6 @@ async def recomendacion_juego(item_id : float = Query(default=22330.0)):
     juegos_recomendados = df_recom['title'].iloc[game_indices].tolist() 
     return juegos_recomendados
 
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
 
-
+if __name__ == '__main__':
+    app.run(port=port)
