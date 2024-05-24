@@ -1,148 +1,53 @@
 import os
-import uvicorn
+import uvicorn 
 from fastapi import FastAPI, Request, Query, Path
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-import json
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-app= FastAPI(title='Proyecto Integrador I Hecho por Michael Martinez')
+app = FastAPI(title='Proyecto Integrador I Hecho por Michael Martinez')
 
-templates = Jinja2Templates(directory="templates")
-
-df_recom = pd.read_parquet(r'https://github.com/bkmay1417/prueva/blob/5ccbce7c14b50ab9ab6da10a366b43df43b8d8fb/Dataset/recomendacion2.parquet?raw=True')
-df_games = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/82702a42172b2b0f23c1e24c6f9fdb294c52d78e/Dataset/developer.parquet?raw=True')
-merged_df = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/8f87ccc010ef4ab3025d5e95d5f0cc1ee11fd276/Dataset/best_developer_year.parquet?raw=True')
-reviews = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/8f87ccc010ef4ab3025d5e95d5f0cc1ee11fd276/Dataset/reviews_analysis.parquet?raw=True')
+# Cargar el dataset
+df_recom = pd.read_parquet('Dataset//recomendacion3.parquet')
 
 
+# Preprocesamiento de los géneros para generar la matriz TF-IDF
+vectorizer = TfidfVectorizer()
+tfidf_matrix = vectorizer.fit_transform(df_recom.groupby('item_id')['genres'].apply(lambda x: ' '.join(x)))
 
+# Cálculo de la similitud del coseno
+cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
 
-
-
-@app.get("/", tags=['Página Principal'])
-async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-
-@app.get("/consulta1")
-async def developer(developer:str = Query(default='Monster Games')):
+@app.get("/Sistema_de_recomendacion")
+async def recomendacion_juego(item_id : float = Query(default=22330.0)):
     """
-    ( desarrollador : str ): Cantidad de items y porcentaje de contenido 
-    Free por año según empresa desarrolladora. Ejemplo de retorno:
+    Recomendación de juegos basada en el item_id.
+    El valor por defecto 10.0 corresponde a Counter-Strike.
+    """
+    try:
+        # Obtener el índice del juego en el DataFrame
+        idx = df_recom[df_recom['item_id'] == item_id].index[0]
+    except IndexError:
+        # Manejar el caso donde no se encuentra el ID del juego
+        raise HTTPException(status_code=404, detail="Item ID no encontrado.")
 
-    Año	    Cantidad de Items	Contenido Free
-    2023	        50                 27%
-    2022	        45	               25%
-    xxxx	        xx	               xx%
-    
-    Monster Games
-    """
-    
-
-    df_filtrado = df_games[df_games['developer'] == developer]
-    # Contar los registros por año
-    conteo_por_año = df_filtrado.groupby('release_date').size().reset_index(name='Cantidad de Items')
-    # Contar los registros 'Free to Play' por año
-    conteo_free_to_play_por_año = df_filtrado[df_filtrado['price'] == 0.00].groupby('release_date').size().reset_index(name='free_to_play_games')
-    # Combinar los DataFrames
-    df_resultado = pd.merge(conteo_por_año, conteo_free_to_play_por_año, on='release_date', how='left')
-    # Calcular el porcentaje de juegos 'Free to Play' por año
-    df_resultado['Contenido Free'] = ((df_resultado['free_to_play_games'] / df_resultado['Cantidad de Items']) * 100).map('{:.2f}%'.format)
-    df_resultado=df_resultado.drop(columns=['free_to_play_games'])
-    # Reemplazar los valores NaN en la columna 'Contenido Free' con '0%'
-    df_resultado['Contenido Free'] = df_resultado['Contenido Free'].replace('nan%', '0%')
-    # Convertir el DataFrame a un diccionario 
-    # Imprimir el DataFrame resultante
-    return(df_resultado.to_dict(orient='records'))
-
-@app.get("/consulta2")
-async def userdata():
-    """
-    ( User_id : str ): Debe devolver cantidad de dinero gastado por el usuario,
-     el porcentaje de recomendación en base areviews.recommend y cantidad de items.
-
-    Ejemplo de retorno:
-     {"Usuario X" : us213ndjss09sdf, "Dinero gastado": 200 USD, "% de recomendación": 20%, "cantidad de items": 5}
-    
-    """
-    return()
-
-@app.get("/consulta3")
-async def UserForGenre():
-    """
-    ( User_id : str ): Debe devolver cantidad de dinero gastado por el usuario,
-     el porcentaje de recomendación en base areviews.recommend y cantidad de items.
-
-    Ejemplo de retorno:
-     {"Usuario X" : us213ndjss09sdf, "Dinero gastado": 200 USD, "% de recomendación": 20%, "cantidad de items": 5}
-    
-    """
-    return()
-
-@app.get("/consulta4")
-async def best_developer_year(year: int = Query(default=2005)):
-    
-    """
-    ( año : int ): Devuelve el top 3 de desarrolladores con juegos MÁS recomendados por 
-    usuarios para el año dado. (reviews.recommend = True y comentarios positivos)
-    
-    Ejemplo de retorno: 
-    [{"Puesto 1" : X}, {"Puesto 2" : Y},{"Puesto 3" : Z}]
-    
-    """
-    
-    year_data = merged_df[merged_df['release_date'] == year]
-    top_developers = year_data['developer'].value_counts().head(3).index.tolist()
-    return [{"Puesto 1": top_developers[0]}, {"Puesto 2": top_developers[1]}, {"Puesto 3": top_developers[2]}]
-
-@app.get("/consulta5")
-async def developer_reviews_analysis(desarrolladora= Query(default='Valve')):
-    """
-    ( desarrolladora : str ): Según el desarrollador, se devuelve un diccionario con el 
-    nombre del desarrollador como llave y una lista con la cantidad total de registros de 
-    reseñas de usuarios que se encuentren categorizados con un análisis de sentimiento 
-    como valor positivo o negativo.
-    
-    Ejemplo de retorno:
-    {'Valve' : [Negative = 182, Positive = 278]}
-    
-    """
-    
-    
-    reviews = reviews[(reviews['developer'] == desarrolladora) ]
-    counts = reviews['sentiment_analysis'].value_counts()
-    # Crear el diccionario de salida
-    resultado = {
-        desarrolladora: [
-            f"Negative = {counts.get(0, 0)}", 
-            f"Positive = {counts.get(2, 0)}"
-        ]
-    }
-
-    
-    return(resultado)
-
-@app.get("/Sistema de recomendacion")
-async def recomendacion_juego(item_id:float= Query(default= 10.0)):
-    """
-    10.0 = couter srike
-    """
-    # Vectorizar los géneros
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(df_recom['genres_str'])
-    # Calcular la similitud del coseno
-    cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)# optimizar
-    idx = df_recom[df_recom['item_id'] == item_id].index[0]
+    # Calcular la similitud de coseno entre el juego dado y todos los juegos
     sim_scores = list(enumerate(cosine_sim[idx]))
+
+    # Ordenar los juegos por su similitud de coseno
     sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:6]
+
+    # Obtener los índices de los juegos recomendados
     game_indices = [i[0] for i in sim_scores]
-    return df_recom['title'].iloc[game_indices].tolist()
+
+    # Obtener los títulos de los juegos recomendados
+    juegos_recomendados = df_recom['title'].iloc[game_indices].tolist()
+    
+    return juegos_recomendados
+
+
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 8000))
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=port)
