@@ -9,7 +9,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 app = FastAPI(title='Proyecto Integrador I Hecho por Michael Martinez')
 
 # Cargar el dataset
-df_recom = pd.read_parquet('Dataset//recomendacion3.parquet')
+df_recom = pd.read_parquet(r'https://github.com/bkmay1417/prueva/blob/6d05305d637b17241145355bb59be13826ee9ffb/Dataset/recomendacion3.parquet?raw=True')
 
 
 # Preprocesamiento de los géneros para generar la matriz TF-IDF
