@@ -6,9 +6,14 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-df_recom = pd.read_parquet(r'Dataset\recomendacion.parquet')
-df_games = pd.read_parquet(r'Dataset\developer.parquet')
+app= FastAPI(title='Proyecto Integrador I Hecho por Michael Martinez')
 
+templates = Jinja2Templates(directory="templates")
+
+df_recom = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/4e23689d2e1a74fddcc9251cee8614c16618cbcf/Dataset/recomendacion.parquet?raw=True')
+df_games = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/82702a42172b2b0f23c1e24c6f9fdb294c52d78e/Dataset/developer.parquet?raw=True')
+merged_df = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/8f87ccc010ef4ab3025d5e95d5f0cc1ee11fd276/Dataset/best_developer_year.parquet?raw=True')
+reviews = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/8f87ccc010ef4ab3025d5e95d5f0cc1ee11fd276/Dataset/reviews_analysis.parquet?raw=True')
 
 
 # Vectorizar los géneros
@@ -17,9 +22,7 @@ tfidf_matrix = vectorizer.fit_transform(df_recom['genres_str'])
 # Calcular la similitud del coseno
 cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)# optimizar
 
-app= FastAPI(title='Proyecto Integrador I Hecho por Michael Martinez')
 
-templates = Jinja2Templates(directory="templates")
 
 @app.get("/", tags=['Página Principal'])
 async def read_root(request: Request):
@@ -43,27 +46,20 @@ async def developer(developer:str = Query(default='Monster Games')):
     
 
     df_filtrado = df_games[df_games['developer'] == developer]
-
     # Contar los registros por año
     conteo_por_año = df_filtrado.groupby('release_date').size().reset_index(name='Cantidad de Items')
-
     # Contar los registros 'Free to Play' por año
     conteo_free_to_play_por_año = df_filtrado[df_filtrado['price'] == 0.00].groupby('release_date').size().reset_index(name='free_to_play_games')
-
     # Combinar los DataFrames
     df_resultado = pd.merge(conteo_por_año, conteo_free_to_play_por_año, on='release_date', how='left')
-
     # Calcular el porcentaje de juegos 'Free to Play' por año
     df_resultado['Contenido Free'] = ((df_resultado['free_to_play_games'] / df_resultado['Cantidad de Items']) * 100).map('{:.2f}%'.format)
-
     df_resultado=df_resultado.drop(columns=['free_to_play_games'])
-
     # Reemplazar los valores NaN en la columna 'Contenido Free' con '0%'
     df_resultado['Contenido Free'] = df_resultado['Contenido Free'].replace('nan%', '0%')
-    # Convertir el DataFrame a un diccionario
-    resultado_dict = df_resultado.to_dict(orient='records')
+    # Convertir el DataFrame a un diccionario 
     # Imprimir el DataFrame resultante
-    return(resultado_dict)
+    return(df_resultado.to_dict(orient='records'))
 
 @app.get("/consulta2")
 async def userdata():
@@ -100,16 +96,10 @@ async def best_developer_year(year: int = Query(default=2005)):
     [{"Puesto 1" : X}, {"Puesto 2" : Y},{"Puesto 3" : Z}]
     
     """
-    merged_df = pd.read_parquet(r'Dataset\best_developer_year.parquet')
-    merged_df = merged_df[(merged_df['release_date'] == year) ]
-    developer_counts = merged_df['developer'].value_counts()
-    top_developers = developer_counts.head(3).index
-    result = []
-    for i, developer in enumerate(top_developers, 1):
-        result.append({f"Puesto {i}": developer})
-
-
-    return(result)
+    
+    year_data = merged_df[merged_df['release_date'] == year]
+    top_developers = year_data['developer'].value_counts().head(3).index.tolist()
+    return [{"Puesto 1": top_developers[0]}, {"Puesto 2": top_developers[1]}, {"Puesto 3": top_developers[2]}]
 
 @app.get("/consulta5")
 async def developer_reviews_analysis(desarrolladora= Query(default='Valve')):
@@ -124,7 +114,7 @@ async def developer_reviews_analysis(desarrolladora= Query(default='Valve')):
     
     """
     
-    reviews = pd.read_parquet(r'Dataset\reviews_analysis.parquet')
+    
     reviews = reviews[(reviews['developer'] == desarrolladora) ]
     counts = reviews['sentiment_analysis'].value_counts()
     # Crear el diccionario de salida
@@ -143,20 +133,9 @@ async def recomendacion_juego(item_id:float= Query(default= 10.0)):
     """
     10.0 = couter srike
     """
-    # Obtener el índice del juego dado su item_id
     idx = df_recom[df_recom['item_id'] == item_id].index[0]
-
-    # Obtener las puntuaciones de similitud del juego con todos los demás juegos
     sim_scores = list(enumerate(cosine_sim[idx]))
-
-    # Ordenar los juegos por puntuación de similitud (de mayor a menor)
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-
-    # Obtener los índices de los 5 juegos más similares (excluyendo el propio juego)
-    sim_scores = sim_scores[1:6]
-
-    # Obtener los item_id de los 5 juegos más similares
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:6]
     game_indices = [i[0] for i in sim_scores]
-    
     return df_recom['title'].iloc[game_indices].tolist()
 
