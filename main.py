@@ -1,3 +1,5 @@
+import os
+import uvicorn
 from fastapi import FastAPI, Request, Query, Path
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -139,3 +141,7 @@ async def recomendacion_juego(item_id:float= Query(default= 10.0)):
     game_indices = [i[0] for i in sim_scores]
     return df_recom['title'].iloc[game_indices].tolist()
 
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 8000))
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=port)
