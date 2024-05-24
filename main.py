@@ -1,6 +1,6 @@
 import os
 import uvicorn 
-from fastapi import FastAPI, Request, Query, Path
+from fastapi import FastAPI, Request, Query, Path,HTTPException
 from fastapi.responses import HTMLResponse
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
