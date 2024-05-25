@@ -12,10 +12,11 @@ app = FastAPI(title='Proyecto Integrador I Hecho por Michael Martinez')
 # Cargar el dataset
 df_recom = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/f079b6b85022872dbe96419294620b4f8d9aca14/Dataset/recomendacion3.parquet?raw=True')
 # Preprocesamiento de los géneros para generar la matriz TF-IDF
-vectorizer = TfidfVectorizer()
-tfidf_matrix = vectorizer.fit_transform(df_recom.groupby('item_id')['genres'].apply(lambda x: ' '.join(x)))
+#vectorizer = TfidfVectorizer()
+#tfidf_matrix = vectorizer.fit_transform(df_recom.groupby('item_id')['genres'].apply(lambda x: ' '.join(x)))
 # Cálculo de la similitud del coseno
-cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
+cosine_sim = 0.0
+#cosine_similarity(tfidf_matrix, tfidf_matrix)
 @app.get("/Sistema_de_recomendacion")
 async def recomendacion_juego(item_id : float = Query(default=22330.0)):
     try:
