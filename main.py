@@ -5,13 +5,11 @@ from fastapi.responses import HTMLResponse
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.metrics.pairwise import linear_kernel
-
-port = int(os.environ.get('PORT', 4000))
+#from sklearn.metrics.pairwise import linear_kernel
 
 app = FastAPI(title='Proyecto Integrador I Hecho por Michael Martinez')
 # Cargar el dataset
-df_recom = pd.read_parquet(r'https://github.com/bkmay1417/prueva/blob/bddff9addb0d7c96156ed5869b3918b1300d8a79/Dataset/recomendacion3_v1.parquet?raw=True')
+df_recom = pd.read_parquet(r'https://github.com/bkmay1417/Machine-Learning-Operations-MLOps-/blob/2596484f682598ca027fdb025193a4a04d317166/Dataset/recomendacion3_v1.parquet?raw=True')
 # Preprocesamiento de los géneros para generar la matriz TF-IDF
 vectorizer = TfidfVectorizer()
 tfidf_matrix = vectorizer.fit_transform(df_recom.groupby('item_id')['genres'].apply(lambda x: ' '.join(x)))
@@ -22,13 +20,14 @@ cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
 #cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
 
 @app.get("/Sistema_de_recomendacion")
-async def recomendacion_juego(item_id : float = Query(default=7761)):
+async def recomendacion_juego(item_id : float = Query(default=27257)):
     try:
         # Obtener el índice del juego en el DataFrame
         idx = df_recom[df_recom['item_id'] == item_id].index[0]
     except IndexError:
         # Manejar el caso donde no se encuentra el ID del juego
         raise HTTPException(status_code=404, detail="Item ID no encontrado.")
+    
     # Calcular la similitud de coseno entre el juego dado y todos los juegos
     sim_scores = list(enumerate(cosine_sim[idx]))
     # Ordenar los juegos por su similitud de coseno
@@ -40,5 +39,4 @@ async def recomendacion_juego(item_id : float = Query(default=7761)):
     return juegos_recomendados
 
 
-if __name__ == '__main__':
-    app.run(port=port)
+
