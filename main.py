@@ -22,7 +22,7 @@ cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
 #cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
 
 @app.get("/Sistema_de_recomendacion")
-async def recomendacion_juego(item_id : float = Query(default=22330.0)):
+async def recomendacion_juego(item_id : float = Query(default=7761)):
     try:
         # Obtener el índice del juego en el DataFrame
         idx = df_recom[df_recom['item_id'] == item_id].index[0]
